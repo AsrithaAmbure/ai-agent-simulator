@@ -58,7 +58,9 @@ def api_categorize():
         })
         
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        # Log the error but don't expose internal details to users
+        print(f"Error in categorize endpoint: {e}")
+        return jsonify({'error': 'Failed to categorize prompt'}), 500
 
 
 @app.route('/api/respond', methods=['POST'])
@@ -112,7 +114,9 @@ def api_respond():
         })
         
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        # Log the error but don't expose internal details to users
+        print(f"Error in respond endpoint: {e}")
+        return jsonify({'error': 'Failed to generate response'}), 500
 
 
 @app.route('/api/status', methods=['GET'])
@@ -144,4 +148,7 @@ if __name__ == '__main__':
     print("=" * 60)
     print()
     
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    # Use debug mode only in development (when FLASK_ENV is set to development)
+    # In production, debug should be False for security
+    debug_mode = os.environ.get('FLASK_ENV') == 'development'
+    app.run(debug=debug_mode, host='0.0.0.0', port=5000)

@@ -92,6 +92,12 @@ python web/app.py
 
 Then open your browser to: **http://localhost:5000**
 
+**Development Mode** (enables Flask debugger):
+```bash
+export FLASK_ENV=development
+python web/app.py
+```
+
 **API Endpoints:**
 
 1. **POST /api/categorize** - Categorize a prompt

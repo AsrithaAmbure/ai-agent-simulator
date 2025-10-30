@@ -43,7 +43,9 @@ def api_categorize():
         })
     
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        # Log the error internally but don't expose details to users
+        app.logger.error(f"Error in categorize endpoint: {e}")
+        return jsonify({"error": "An error occurred processing your request"}), 500
 
 
 @app.route('/api/respond', methods=['POST'])
@@ -74,7 +76,9 @@ def api_respond():
         })
     
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        # Log the error internally but don't expose details to users
+        app.logger.error(f"Error in respond endpoint: {e}")
+        return jsonify({"error": "An error occurred processing your request"}), 500
 
 
 @app.route('/api/status', methods=['GET'])
@@ -89,4 +93,6 @@ def api_status():
 
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    # Use debug mode only if explicitly set via environment variable
+    debug_mode = os.environ.get('FLASK_DEBUG', 'False').lower() in ('true', '1', 't')
+    app.run(debug=debug_mode, host='0.0.0.0', port=5000)

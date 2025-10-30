@@ -91,7 +91,15 @@ Start the web server:
 python web/app.py
 ```
 
+For development with debug mode enabled:
+
+```bash
+FLASK_DEBUG=true python web/app.py
+```
+
 Then open your browser to: **http://localhost:5000**
+
+**Note**: Debug mode is disabled by default for security. Only enable it during development.
 
 **API Endpoints:**
 

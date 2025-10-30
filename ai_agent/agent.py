@@ -19,11 +19,18 @@ def categorize_prompt(prompt: str) -> str:
     """
     prompt_lower = prompt.lower()
     
-    # Summarization keywords
+    # Summarization keywords (check first for specificity)
     summarization_keywords = ['summarize', 'summary', 'tl;dr', 'tldr', 'brief', 'overview', 
                               'condense', 'in short', 'recap', 'key points']
     if any(keyword in prompt_lower for keyword in summarization_keywords):
         return 'summarization'
+    
+    # Grammar-check keywords (check before code-help to avoid false positives with "error")
+    grammar_keywords = ['grammar', 'spell', 'spelling', 'proofread', 'correct this',
+                        'punctuation', 'fix grammar', 'grammatical', 'check grammar',
+                        'check spelling']
+    if any(keyword in prompt_lower for keyword in grammar_keywords):
+        return 'grammar-check'
     
     # Code-help keywords and patterns
     code_keywords = ['error', 'bug', 'code', 'function', 'debug', 'how to', 'implement',
@@ -34,12 +41,6 @@ def categorize_prompt(prompt: str) -> str:
     
     if has_code_block or any(keyword in prompt_lower for keyword in code_keywords):
         return 'code-help'
-    
-    # Grammar-check keywords
-    grammar_keywords = ['grammar', 'spell', 'spelling', 'proofread', 'correct',
-                        'punctuation', 'check', 'fix grammar', 'grammatical']
-    if any(keyword in prompt_lower for keyword in grammar_keywords):
-        return 'grammar-check'
     
     # Default to general
     return 'general'

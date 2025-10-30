@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Agent Simulator</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🤖 AI Agent Simulator</h1>
+            <p class="subtitle">Categorize prompts and generate intelligent responses</p>
+        </header>
+
+        <div class="status-bar">
+            <div id="api-status" class="status-indicator">
+                {% if has_api_key %}
+                <span class="status-dot active"></span> OpenAI API Key Detected
+                {% else %}
+                <span class="status-dot"></span> No OpenAI API Key (Using Templates)
+                {% endif %}
+            </div>
+        </div>
+
+        <main>
+            <div class="input-section">
+                <label for="prompt-input">Enter Your Prompt:</label>
+                <textarea 
+                    id="prompt-input" 
+                    placeholder="Type your question, request for summary, code help, grammar check, or general inquiry..."
+                    rows="5"
+                ></textarea>
+            </div>
+
+            <div class="options-section">
+                <label class="checkbox-label">
+                    <input type="checkbox" id="use-openai" {% if not has_api_key %}disabled{% endif %}>
+                    Use OpenAI API
+                    {% if not has_api_key %}
+                    <span class="disabled-note">(Requires API Key)</span>
+                    {% endif %}
+                </label>
+            </div>
+
+            <div class="button-section">
+                <button id="categorize-btn" class="btn btn-primary">Categorize</button>
+                <button id="respond-btn" class="btn btn-success">Respond</button>
+                <button id="clear-btn" class="btn btn-secondary">Clear</button>
+            </div>
+
+            <div class="result-section">
+                <div class="category-display">
+                    <h3>Category:</h3>
+                    <div id="category-result" class="result-box category-box">
+                        <span class="placeholder">Click "Categorize" to see the category</span>
+                    </div>
+                </div>
+
+                <div class="response-display">
+                    <h3>Response:</h3>
+                    <div id="response-result" class="result-box response-box">
+                        <span class="placeholder">Click "Respond" to generate a response</span>
+                    </div>
+                </div>
+            </div>
+
+            <div id="status-message" class="status-message"></div>
+        </main>
+
+        <footer>
+            <p>AI Agent Simulator | Supports: Summarization, Code Help, Grammar Check, General Q&A</p>
+        </footer>
+    </div>
+
+    <script>
+        const promptInput = document.getElementById('prompt-input');
+        const useOpenAICheckbox = document.getElementById('use-openai');
+        const categorizeBtn = document.getElementById('categorize-btn');
+        const respondBtn = document.getElementById('respond-btn');
+        const clearBtn = document.getElementById('clear-btn');
+        const categoryResult = document.getElementById('category-result');
+        const responseResult = document.getElementById('response-result');
+        const statusMessage = document.getElementById('status-message');
+
+        let currentCategory = null;
+
+        function showStatus(message, type = 'info') {
+            statusMessage.textContent = message;
+            statusMessage.className = `status-message ${type}`;
+            statusMessage.style.display = 'block';
+            
+            setTimeout(() => {
+                statusMessage.style.display = 'none';
+            }, 5000);
+        }
+
+        function clearResults() {
+            categoryResult.innerHTML = '<span class="placeholder">Click "Categorize" to see the category</span>';
+            responseResult.innerHTML = '<span class="placeholder">Click "Respond" to generate a response</span>';
+            currentCategory = null;
+        }
+
+        categorizeBtn.addEventListener('click', async () => {
+            const prompt = promptInput.value.trim();
+            
+            if (!prompt) {
+                showStatus('Please enter a prompt first', 'error');
+                return;
+            }
+
+            categorizeBtn.disabled = true;
+            showStatus('Categorizing...', 'info');
+
+            try {
+                const response = await fetch('/api/categorize', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ prompt }),
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    currentCategory = data.category;
+                    categoryResult.innerHTML = `
+                        <span class="category-badge ${data.category}">${data.category}</span>
+                    `;
+                    showStatus('Categorized successfully!', 'success');
+                } else {
+                    showStatus(data.error || 'Failed to categorize', 'error');
+                }
+            } catch (error) {
+                showStatus('Network error: ' + error.message, 'error');
+            } finally {
+                categorizeBtn.disabled = false;
+            }
+        });
+
+        respondBtn.addEventListener('click', async () => {
+            const prompt = promptInput.value.trim();
+            
+            if (!prompt) {
+                showStatus('Please enter a prompt first', 'error');
+                return;
+            }
+
+            respondBtn.disabled = true;
+            showStatus('Generating response...', 'info');
+
+            try {
+                const response = await fetch('/api/respond', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ 
+                        prompt,
+                        category: currentCategory,
+                        use_openai: useOpenAICheckbox.checked
+                    }),
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    // Update category if not already set
+                    if (!currentCategory) {
+                        currentCategory = data.category;
+                        categoryResult.innerHTML = `
+                            <span class="category-badge ${data.category}">${data.category}</span>
+                        `;
+                    }
+
+                    // Display response
+                    responseResult.innerHTML = `<div class="response-text">${data.response}</div>`;
+                    
+                    // Show status
+                    const source = data.used_openai ? 'OpenAI API' : 'Template';
+                    showStatus(`Response generated using ${source}`, 'success');
+                } else {
+                    showStatus(data.error || 'Failed to generate response', 'error');
+                }
+            } catch (error) {
+                showStatus('Network error: ' + error.message, 'error');
+            } finally {
+                respondBtn.disabled = false;
+            }
+        });
+
+        clearBtn.addEventListener('click', () => {
+            promptInput.value = '';
+            clearResults();
+            showStatus('Cleared', 'info');
+        });
+
+        // Allow Enter key to submit
+        promptInput.addEventListener('keydown', (e) => {
+            if (e.ctrlKey && e.key === 'Enter') {
+                respondBtn.click();
+            }
+        });
+    </script>
+</body>
+</html>

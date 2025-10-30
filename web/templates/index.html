@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Agent Simulator</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🤖 AI Agent Simulator</h1>
+            <p class="subtitle">Categorize prompts and generate intelligent responses</p>
+        </header>
+        
+        <main>
+            <div class="input-section">
+                <label for="prompt">Enter Your Prompt:</label>
+                <textarea id="prompt" rows="5" placeholder="Type your prompt here..."></textarea>
+                
+                <div class="controls">
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="useOpenAI">
+                        <label for="useOpenAI">Use OpenAI API</label>
+                        <span id="apiStatus" class="status-indicator"></span>
+                    </div>
+                    
+                    <div class="button-group">
+                        <button id="categorizeBtn" class="btn btn-secondary">Categorize</button>
+                        <button id="respondBtn" class="btn btn-primary">Respond</button>
+                        <button id="clearBtn" class="btn btn-clear">Clear</button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="results-section">
+                <div class="category-display">
+                    <strong>Category:</strong>
+                    <span id="category" class="category-badge"></span>
+                </div>
+                
+                <div class="response-display">
+                    <strong>Response:</strong>
+                    <div id="response" class="response-content"></div>
+                </div>
+                
+                <div class="status-bar">
+                    <span id="statusBar">Ready</span>
+                </div>
+            </div>
+        </main>
+        
+        <footer>
+            <p>AI Agent Simulator - Built with Flask</p>
+        </footer>
+    </div>
+    
+    <script>
+        // Check OpenAI API status on load
+        async function checkAPIStatus() {
+            try {
+                const response = await fetch('/api/status');
+                const data = await response.json();
+                const statusEl = document.getElementById('apiStatus');
+                
+                if (data.openai_available) {
+                    statusEl.textContent = '✓ API Key Set';
+                    statusEl.className = 'status-indicator status-success';
+                } else {
+                    statusEl.textContent = '✗ API Key Not Set';
+                    statusEl.className = 'status-indicator status-error';
+                    document.getElementById('useOpenAI').disabled = true;
+                }
+            } catch (error) {
+                console.error('Error checking API status:', error);
+            }
+        }
+        
+        // Categorize prompt
+        async function categorizePrompt() {
+            const prompt = document.getElementById('prompt').value.trim();
+            
+            if (!prompt) {
+                alert('Please enter a prompt first.');
+                return;
+            }
+            
+            updateStatus('Categorizing...');
+            
+            try {
+                const response = await fetch('/api/categorize', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ prompt })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    document.getElementById('category').textContent = data.category.toUpperCase();
+                    updateStatus(`Categorized as: ${data.category}`);
+                } else {
+                    alert(`Error: ${data.error}`);
+                    updateStatus('Error during categorization');
+                }
+            } catch (error) {
+                alert(`Error: ${error.message}`);
+                updateStatus('Error during categorization');
+            }
+        }
+        
+        // Generate full response
+        async function generateResponse() {
+            const prompt = document.getElementById('prompt').value.trim();
+            const useOpenAI = document.getElementById('useOpenAI').checked;
+            
+            if (!prompt) {
+                alert('Please enter a prompt first.');
+                return;
+            }
+            
+            updateStatus('Generating response...');
+            
+            try {
+                const response = await fetch('/api/respond', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ 
+                        prompt,
+                        use_openai: useOpenAI
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    document.getElementById('category').textContent = data.category.toUpperCase();
+                    document.getElementById('response').textContent = data.response;
+                    
+                    const apiStatus = data.used_openai ? 'OpenAI API' : 'Template';
+                    updateStatus(`Response generated using ${apiStatus} | Category: ${data.category}`);
+                } else {
+                    alert(`Error: ${data.error}`);
+                    updateStatus('Error during response generation');
+                }
+            } catch (error) {
+                alert(`Error: ${error.message}`);
+                updateStatus('Error during response generation');
+            }
+        }
+        
+        // Clear all fields
+        function clearAll() {
+            document.getElementById('prompt').value = '';
+            document.getElementById('category').textContent = '';
+            document.getElementById('response').textContent = '';
+            updateStatus('Ready');
+        }
+        
+        // Update status bar
+        function updateStatus(message) {
+            document.getElementById('statusBar').textContent = message;
+        }
+        
+        // Event listeners
+        document.getElementById('categorizeBtn').addEventListener('click', categorizePrompt);
+        document.getElementById('respondBtn').addEventListener('click', generateResponse);
+        document.getElementById('clearBtn').addEventListener('click', clearAll);
+        
+        // Check API status on page load
+        checkAPIStatus();
+    </script>
+</body>
+</html>
